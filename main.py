@@ -445,6 +445,18 @@ if st.session_state.places_df is not None:
                         # Select additional POIs
                         extra_places = available_places[
                             ~available_places.index.isin(visited_indices)
+                            & (
+                                available_places["Category"].str.contains(
+                                    "beach|attraction|library|art|aquarium|theatre|events_venue|museum|park|golf_course|theme_park|nature_reserve|garden|escape_game|amusement_arcade|place_of_worship|monastery|handicraft|artwork|pottery|antiques|grassland|dog_park|horse_riding",
+                                    case=False,
+                                    na=False,
+                                )
+                            )
+                            & (
+                                ~available_places["Category"].str.contains(
+                                    "apartment", case=False, na=False
+                                )
+                            )
                         ].head(
                             3
                         )  # 3 extra places max
