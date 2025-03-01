@@ -4,10 +4,11 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 from datetime import timedelta, date
-from config import poi_types, tourist_categories_dict, email
+from config import poi_types, tourist_categories_dict, email, train
 from user_interface import add_custom_css
 from utils import determine_transport_mode, calculate_travel_time
 from data_fetch import fetch_google_travel_time, fetch_trip_advisor_cost
+from recommender import train_models
 
 # add custom CSS to the app
 add_custom_css()
@@ -324,6 +325,17 @@ if st.session_state.places_df is not None:
                         st.info(f"📆 **Number of Days**: {days}")
                         st.info(f"💰 **Budget**: ₹{budget}")
                         st.markdown("---")
+
+                        # training models in recommender.py to get the most popular, highly rated and
+                        # recommended places considering the user's preferences (especially budget and travel dates)
+                        # 1. Autoencoder Model, 2. ALS Model, 3. K-Means Clustering Model
+                        train_models(
+                            rbm_units=(5, 3),
+                            als_params=(10, 10, 0.1),
+                            kmeans_clusters=3,
+                            knn_neighbors=5,
+                            train=train,
+                        )
 
                         # Add distance calculation
                         sorted_places["Distance"] = sorted_places.apply(

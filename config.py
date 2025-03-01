@@ -45,6 +45,8 @@ tourist_categories_dict = {
 
 email = "pooja" + str(random.randint(1, 1000)) + "@gmail.com"
 
+train = False
+
 
 class TimeGoogleDataFetch:
     def __init__(self, min_distance, max_distance):
