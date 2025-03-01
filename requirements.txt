@@ -1,0 +1,11 @@
+streamlit
+requests
+pandas
+folium
+streamlit-folium
+datetime
+numpy
+scikit-learn
+scipy
+tensorflow
+pyspark
