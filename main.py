@@ -352,12 +352,6 @@ if st.session_state.places_df is not None:
                         )  # Approx conversion to km
                         sorted_places = sorted_places.sort_values("Distance_km")
 
-                        # Generate itinerary
-                        itinerary = {}
-                        places_per_day = min(
-                            6, max(1, len(sorted_places) // days)
-                        )  # 6 places/day max
-
                         # Select place to stay
                         try:
                             stay_place = sorted_places[
@@ -388,6 +382,11 @@ if st.session_state.places_df is not None:
                             pass
 
                 try:
+                    # Generate itinerary for the trip
+                    places_per_day = min(
+                        5, max(1, len(sorted_places) // days)
+                    )  # 5 places/day max
+
                     visited_indices = set()  # Track visited places
 
                     for day in range(1, days + 1):
@@ -442,6 +441,30 @@ if st.session_state.places_df is not None:
                                 f"🕒 Estimated Visit Duration: {fetch_google_travel_time(min_distance=30, max_distance=120)} minutes"
                             )
                             st.markdown("---")
+
+                        # Select additional POIs
+                        extra_places = available_places[
+                            ~available_places.index.isin(visited_indices)
+                        ].head(
+                            3
+                        )  # 3 extra places max
+                        if not extra_places.empty:
+                            st.markdown(
+                                "##### 📌 Additional Places of Interest You Can Visit on the Way"
+                            )
+                            for _, extra in extra_places.iterrows():
+                                st.write(
+                                    f"🗺️ **{extra['Name']}** ({extra['Category'].replace('_', ' ').title()})"
+                                )
+                                st.write(
+                                    f"📍 Location: {round(extra['Latitude'], 3)}, {round(extra['Longitude'], 3)}"
+                                )
+                                st.write(
+                                    f"🛤️ Distance: {round(extra['Distance_km']/2, 2)} km"
+                                )
+                                st.markdown("---")
+
+                            visited_indices.update(extra_places.index)
 
                         # Filter meal locations
                         meal_places = available_places[
