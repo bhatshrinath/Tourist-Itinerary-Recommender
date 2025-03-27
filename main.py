@@ -423,24 +423,68 @@ if st.session_state.places_df is not None:
                         visited_indices.update(attractions.index)
 
                         # Display places for the day
-                        for _, attraction in attractions.iterrows():
-                            distance_km = attraction["Distance_km"]
-                            travel_time = calculate_travel_time(distance_km)
-                            transport_mode = determine_transport_mode(distance_km)
+                        idx_dict = {}
+                        for i, (idx, attraction) in enumerate(attractions.iterrows()):
+                            idx_dict[i] = idx
+                            if i == 0:
+                                # Source (hotel) to first destination
+                                distance_km = attraction["Distance_km"]
+                                travel_time = calculate_travel_time(distance_km)
+                                transport_mode = determine_transport_mode(distance_km)
 
-                            st.write(
-                                f"🎯 **Attraction**: {attraction['Name']} ({attraction['Category'].replace('_', ' ').title()})"
-                            )
-                            st.write(
-                                f"📍 Location: {round(attraction['Latitude'], 3)}, {round(attraction['Longitude'], 3)}"
-                            )
-                            st.write(f"🛤️ Distance: {distance_km:.2f} km")
-                            st.write(f"⏳ Travel Time: {travel_time} minutes")
-                            st.write(f"🚶 Recommended Mode: {transport_mode}")
-                            st.write(
-                                f"🕒 Estimated Visit Duration: {fetch_google_travel_time(min_distance=30, max_distance=120)} minutes"
-                            )
-                            st.markdown("---")
+                                if stay_place.empty:
+                                    st.warning(
+                                        "Start from the station/airport directly as no suitable stay places found for the given filters."
+                                    )
+                                else:
+                                    st.write(
+                                        f"🏨 **From Stay:** {stay_place['Name']} ({stay_place['Category'].replace('_', ' ').title()})"
+                                    )
+                                st.write(
+                                    f"🎯 **To:** {attraction['Name']} ({attraction['Category'].replace('_', ' ').title()})"
+                                )
+                                st.write(
+                                    f"📍 Location: {round(attraction['Latitude'], 3)}, {round(attraction['Longitude'], 3)}"
+                                )
+                                st.write(f"🛤️ Distance: {distance_km:.2f} km")
+                                st.write(f"⏳ Travel Time: {travel_time} minutes")
+                                st.write(f"🚶 Recommended Mode: {transport_mode}")
+                                st.write(
+                                    f"🕒 Estimated Visit Duration: {fetch_google_travel_time(min_distance=30, max_distance=120)} minutes"
+                                )
+                                st.markdown("---")
+                            elif i > 0:
+                                # From previous destination to next destination
+                                distance_km = attraction["Distance_km"]
+                                travel_time = calculate_travel_time(distance_km)
+                                transport_mode = determine_transport_mode(distance_km)
+
+                                try:
+                                    st.write(
+                                        f"🎯 **From:** {attractions.loc[idx_dict[i-1]]['Name']} ({attractions.loc[idx_dict[i-1]]['Category'].replace('_', ' ').title()})"
+                                    )
+                                except:
+                                    if stay_place.empty:
+                                        st.warning(
+                                            "Start from the station/airport directly as no suitable stay places found for the given filters."
+                                        )
+                                    else:
+                                        st.write(
+                                            f"🏨 **From Stay:** {stay_place['Name']} ({stay_place['Category'].replace('_', ' ').title()})"
+                                        )
+                                st.write(
+                                    f"🎯 **To:** {attraction['Name']} ({attraction['Category'].replace('_', ' ').title()})"
+                                )
+                                st.write(
+                                    f"📍 Location: {round(attraction['Latitude'], 3)}, {round(attraction['Longitude'], 3)}"
+                                )
+                                st.write(f"🛤️ Distance: {distance_km:.2f} km")
+                                st.write(f"⏳ Travel Time: {travel_time} minutes")
+                                st.write(f"🚶 Recommended Mode: {transport_mode}")
+                                st.write(
+                                    f"🕒 Estimated Visit Duration: {fetch_google_travel_time(min_distance=30, max_distance=120)} minutes"
+                                )
+                                st.markdown("---")
 
                         # Select additional POIs
                         extra_places = available_places[
@@ -464,17 +508,53 @@ if st.session_state.places_df is not None:
                             st.markdown(
                                 "##### 📌 Additional Places of Interest You Can Visit on the Way"
                             )
-                            for _, extra in extra_places.iterrows():
-                                st.write(
-                                    f"🗺️ **{extra['Name']}** ({extra['Category'].replace('_', ' ').title()})"
-                                )
-                                st.write(
-                                    f"📍 Location: {round(extra['Latitude'], 3)}, {round(extra['Longitude'], 3)}"
-                                )
-                                st.write(
-                                    f"🛤️ Distance: {round(extra['Distance_km']/2, 2)} km"
-                                )
-                                st.markdown("---")
+
+                            extra_idx_dict = {}
+                            for i, (idx, extra) in enumerate(extra_places.iterrows()):
+                                extra_idx_dict[i] = idx
+                                if i == 0:
+                                    if stay_place.empty:
+                                        st.warning(
+                                            "Start from the station/airport directly as no suitable stay places found for the given filters."
+                                        )
+                                    else:
+                                        st.write(
+                                            f"🏨 **From Stay:** {stay_place['Name']} ({stay_place['Category'].replace('_', ' ').title()})"
+                                        )
+                                    st.write(
+                                        f"🗺️ **To:** {extra['Name']} ({extra['Category'].replace('_', ' ').title()})"
+                                    )
+                                    st.write(
+                                        f"📍 Location: {round(extra['Latitude'], 3)}, {round(extra['Longitude'], 3)}"
+                                    )
+                                    st.write(
+                                        f"🛤️ Distance: {round(extra['Distance_km']/2, 2)} km"
+                                    )
+                                    st.markdown("---")
+                                elif i > 0:
+                                    try:
+                                        st.write(
+                                            f"🗺️ **From:** {extra_places.loc[extra_idx_dict[i-1]]['Name']} ({extra_places.loc[extra_idx_dict[i-1]]['Category'].replace('_', ' ').title()})"
+                                        )
+                                    except:
+                                        if stay_place.empty:
+                                            st.warning(
+                                                "Start from the station/airport directly as no suitable stay places found for the given filters."
+                                            )
+                                        else:
+                                            st.write(
+                                                f"🏨 **From Stay:** {stay_place['Name']} ({stay_place['Category'].replace('_', ' ').title()})"
+                                            )
+                                    st.write(
+                                        f"🗺️ **To:** {extra['Name']} ({extra['Category'].replace('_', ' ').title()})"
+                                    )
+                                    st.write(
+                                        f"📍 Location: {round(extra['Latitude'], 3)}, {round(extra['Longitude'], 3)}"
+                                    )
+                                    st.write(
+                                        f"🛤️ Distance: {round(extra['Distance_km']/2, 2)} km"
+                                    )
+                                    st.markdown("---")
 
                             visited_indices.update(extra_places.index)
 
