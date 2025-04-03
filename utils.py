@@ -35,10 +35,21 @@ def calculate_travel_time(distance_km):
         return fetch_google_travel_time(
             min_distance=20, max_distance=60
         )  # Longer taxi/public transport times
-    else:
+    elif distance_km < 30:
         return fetch_google_travel_time(
             min_distance=60, max_distance=120
         )  # Public transport or intercity travel in minutes
+    elif distance_km < 100:
+        return fetch_google_travel_time(min_distance=120, max_distance=180)
+    # Longer intercity travel times in minutes
+    elif distance_km < 200:
+        return fetch_google_travel_time(min_distance=180, max_distance=240)
+    else:  # Very long distances, consider flying or long-distance trains
+        # This is a placeholder; actual implementation may vary based on the API used.
+        # For example, you might want to fetch flight times or long-distance train times.
+        # Here we assume a long-distance travel time of 240 minutes (4 hours).
+        # You can adjust this based on your requirements or API capabilities.
+        return fetch_google_travel_time(min_distance=240, max_distance=300)
 
 
 # Function to determine transport mode
@@ -64,5 +75,15 @@ def determine_transport_mode(distance_km):
         return "Bicycle or Taxi"
     elif distance_km < 10:
         return "Taxi or Public Transport"
-    else:
+    elif distance_km < 30:
+        return "Public Transport or Intercity Travel"
+    elif distance_km < 100:
         return "Intercity Bus/Train"
+    elif distance_km < 200:
+        return "Intercity Bus/Train"
+    else:  # Very long distances, consider flying or long-distance trains
+        # This is a placeholder; actual implementation may vary based on the API used.
+        # For example, you might want to fetch flight times or long-distance train times.
+        # Here we assume a long-distance travel time of 240 minutes (4 hours).
+        # You can adjust this based on your requirements or API capabilities.
+        return "Long-Distance Travel Mode (Flight)"

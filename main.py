@@ -41,6 +41,9 @@ st.markdown("---")
 
 # Sidebar for user inputs
 st.sidebar.header("Customize Your Search")
+source = st.sidebar.text_input("Source (e.g., New York):", "New York")
+# set default value to New York as 10 kms
+radius_source = 10 * 1000  # Convert to meters
 destination = st.sidebar.text_input("Destination (e.g., Paris):", "Paris")
 radius = st.sidebar.slider("Search Radius (kms):", 1, 20, 1) * 1000  # Convert to meters
 
@@ -96,13 +99,18 @@ fetch_button = st.sidebar.button("Get Recommendations")
 # Initialize session state
 if "places_df" not in st.session_state:
     st.session_state.places_df = None
+if "places_df_source" not in st.session_state:
+    st.session_state.places_df_source = None
 if "lat" not in st.session_state or "lon" not in st.session_state:
     st.session_state.lat = None
     st.session_state.lon = None
+if "lat_source" not in st.session_state or "lon_source" not in st.session_state:
+    st.session_state.lat_source = None
+    st.session_state.lon_source = None
 
 # Step 3: Fetch Coordinates with Nominatim API
 if fetch_button:
-    with st.spinner("Fetching Location..."):
+    with st.spinner("Fetching Destination Location..."):
         nominatim_url = "https://nominatim.openstreetmap.org/search"
         params = {"q": destination, "format": "json", "limit": 1}
         headers = {"User-Agent": f"ItineraryPlanner/1.0 ({email})"}
@@ -118,26 +126,56 @@ if fetch_button:
                     st.session_state.lat = float(location["lat"])
                     st.session_state.lon = float(location["lon"])
                     st.write(
-                        f"Found {destination} at Latitude: {round(st.session_state.lat, 3)} and Longitude: {round(st.session_state.lon, 3)}"
+                        f"Found destination {destination} at Latitude: {round(st.session_state.lat, 3)} and Longitude: {round(st.session_state.lon, 3)}"
                     )
-                    st.success("Location Fetched Successfully!")
+                    st.success("Destination Location Fetched Successfully!")
                 else:
                     st.error(
-                        "No results returned from Nominatim. Please check your input."
+                        "No results returned from Nominatim. Please check your input for destination."
                     )
             else:
                 st.error(
-                    f"Failed to fetch location data. HTTP Status: {response.status_code}"
+                    f"Failed to fetch destination location data. HTTP Status: {response.status_code}"
                 )
         except requests.exceptions.RequestException as e:
-            st.error(f"An error occurred while fetching location data: {e}")
+            st.error(f"An error occurred while fetching destination location data: {e}")
 
-    # Fetch Points of Interest with Overpass API
+    with st.spinner("Fetching Source Location..."):
+        nominatim_url = "https://nominatim.openstreetmap.org/search"
+        params = {"q": source, "format": "json", "limit": 1}
+        headers = {"User-Agent": f"ItineraryPlanner/1.0 ({email})"}
+
+        try:
+            response = requests.get(
+                nominatim_url, params=params, headers=headers, timeout=100
+            )
+            if response.status_code == 200:
+                results = response.json()
+                if results:
+                    location_source = results[0]
+                    st.session_state.lat_source = float(location_source["lat"])
+                    st.session_state.lon_source = float(location_source["lon"])
+                    st.write(
+                        f"Found source {source} at Latitude: {round(st.session_state.lat_source, 3)} and Longitude: {round(st.session_state.lon_source, 3)}"
+                    )
+                    st.success("Source Location Fetched Successfully!")
+                else:
+                    st.error(
+                        "No results returned from Nominatim. Please check your input for source."
+                    )
+            else:
+                st.error(
+                    f"Failed to fetch source location data. HTTP Status: {response.status_code}"
+                )
+        except requests.exceptions.RequestException as e:
+            st.error(f"An error occurred while fetching source location data: {e}")
+
+    # Fetch Destination Points of Interest with Overpass API
     if st.session_state.lat is not None and st.session_state.lon is not None:
-        with st.spinner("Fetching Points of Interests..."):
+        with st.spinner("Fetching Destination Points of Interests..."):
             overpass_url = "https://overpass-api.de/api/interpreter"
 
-            # Construct query for all POI types
+            # Construct query for all Destination POI types
             query = f"""
             [out:json];
             (
@@ -208,21 +246,119 @@ if fetch_button:
                             .head(10)
                             .reset_index(drop=True)
                         )
-                        st.success("Points of Interests Fetched Successfully!")
+                        st.success(
+                            "Destination Points of Interests Fetched Successfully!"
+                        )
                     else:
                         st.error(
-                            "No points of interest found for the given type and radius."
+                            "No points of interest found for the given type and radius around the destination."
                         )
                 else:
                     st.error(
-                        f"Failed to fetch POI data from Overpass API. HTTP Status: {response.status_code}"
+                        f"Failed to fetch Destination POI data from Overpass API. HTTP Status: {response.status_code}"
                     )
             except requests.exceptions.RequestException as e:
-                st.error(f"An error occurred while fetching POI data: {e}")
+                st.error(f"An error occurred while fetching Destination POI data: {e}")
 
-if st.session_state.places_df is not None:
+    # Fetch Source Points of Interest with Overpass API
+    if (
+        st.session_state.lat_source is not None
+        and st.session_state.lon_source is not None
+    ):
+        with st.spinner("Fetching Source Points of Interests..."):
+            overpass_url = "https://overpass-api.de/api/interpreter"
 
-    st.write("## Recommendations")
+            # Construct query for all Source POI types
+            query = f"""
+            [out:json];
+            (
+            """
+            for poi_type in poi_types:
+                query += f'node["{poi_type}"](around:{radius_source},{st.session_state.lat_source},{st.session_state.lon_source});'
+                query += f'way["{poi_type}"](around:{radius_source},{st.session_state.lat_source},{st.session_state.lon_source});'
+                query += f'relation["{poi_type}"](around:{radius_source},{st.session_state.lat_source},{st.session_state.lon_source});'
+            query += """
+            );
+            out center;
+            """
+
+            try:
+                response = requests.get(
+                    overpass_url, params={"data": query}, timeout=30
+                )
+                if response.status_code == 200:
+                    data = response.json().get("elements", [])
+                    if data:
+                        places_source = []
+                        for element in data:
+                            tags = element.get("tags", {})
+                            name = tags.get("name", "Unnamed Location")
+                            category = (
+                                tags.get("tourism")
+                                or tags.get("amenity")
+                                or tags.get("leisure")
+                                or tags.get("shop")
+                                or tags.get("natural")
+                                or tags.get("transport")
+                                or tags.get("cultural")
+                                or "Unknown Category"
+                            )
+                            lat = element.get(
+                                "lat", element.get("center", {}).get("lat")
+                            )
+                            lon = element.get(
+                                "lon", element.get("center", {}).get("lon")
+                            )
+
+                            if name and lat and lon:
+                                places_source.append(
+                                    {
+                                        "Name": name,
+                                        "Category": category,
+                                        "Latitude": lat,
+                                        "Longitude": lon,
+                                    }
+                                )
+
+                        places_data_source = pd.DataFrame(places_source)
+                        st.session_state.places_df_source = places_data_source.dropna(
+                            subset=["Latitude", "Longitude"]
+                        )
+
+                        # remove ""Unknown Category" from the category column, "Unknown Location" from the name column
+                        st.session_state.places_df_source = (
+                            st.session_state.places_df_source[
+                                st.session_state.places_df_source["Category"]
+                                != "Unknown Category"
+                            ]
+                        )
+                        st.session_state.places_df_source = (
+                            st.session_state.places_df_source[
+                                st.session_state.places_df_source["Name"]
+                                != "Unnamed Location"
+                            ]
+                        )
+
+                        # Maximum of 20 in each category
+                        st.session_state.places_df_source = (
+                            st.session_state.places_df_source.groupby("Category")
+                            .head(10)
+                            .reset_index(drop=True)
+                        )
+                        st.success("Source Points of Interests Fetched Successfully!")
+                    else:
+                        st.error(
+                            "No points of interest found for the given type and radius around the source."
+                        )
+            except requests.exceptions.RequestException as e:
+                st.error(f"An error occurred while fetching Source POI data: {e}")
+
+if (
+    st.session_state.places_df is not None
+    and st.session_state.places_df_source is not None
+):
+
+    st.write("## Recommendations at Destination")
     # Filter the DataFrame based on selected categories
     filtered_df = st.session_state.places_df
     filtered_df = filtered_df[
@@ -249,25 +385,46 @@ if st.session_state.places_df is not None:
         st.markdown("---")
 
         # Display insights about the data
-        st.markdown("## Insights from Recommendations")
+        st.markdown("## Insights from Recommendations at Destination")
 
         # Display selected categories (remove "_" and make it capital)
         selected_categories = st.session_state.places_df["Category"].unique()
         selected_categories = [
             cat.replace("_", " ").title() for cat in selected_categories
         ]
-        st.markdown("#### Selected Categories")
+        st.markdown("#### Selected Categories for Recommendations at Destination")
         st.write(", ".join(selected_categories))
 
         # Display total number of places found
-        st.markdown("#### Total Number of Places Found")
+        st.markdown("#### Total Number of Places Found at Destination")
         st.write(len(st.session_state.places_df))
+
+    # Filter the DataFrame based on selected categories
+    filtered_df_source = st.session_state.places_df_source
+    filtered_df_source = filtered_df_source[
+        filtered_df_source["Category"].isin(
+            selected_subcategories_food
+            + selected_subcategories_accommodation
+            + selected_subcategories_attractions
+        )
+    ].reset_index(drop=True)
+    filtered_df_source["Place Category"] = (
+        filtered_df_source["Category"].str.replace("_", " ").str.title()
+    )
+    filtered_df_source = filtered_df_source.drop(columns={"Place Category"})
+
+    # Display filtered source data
+    if not filtered_df_source.empty:
+
+        # Update the session state with the filtered source DataFrame
+        st.session_state.places_df_source = filtered_df_source
+        sorted_places_source = filtered_df_source.copy()
 
         st.markdown("")
         st.markdown("---")
 
         # Map Visualization
-        st.header("Explore Places on the Map")
+        st.header("Explore Places on the Map at Destination 🗺️")
         map_center = [filtered_df["Latitude"].mean(), filtered_df["Longitude"].mean()]
         location_map = folium.Map(location=map_center, zoom_start=13)
 
@@ -286,8 +443,15 @@ if st.session_state.places_df is not None:
         st.header("🗓️ Detailed Trip Itinerary Planning")
 
         # Validate location data
-        if st.session_state.lat is None or st.session_state.lon is None:
-            st.warning("Please fetch location data before planning your itinerary.")
+        if (
+            st.session_state.lat is None
+            or st.session_state.lon is None
+            or st.session_state.lat_source is None
+            or st.session_state.lon_source is None
+        ):
+            st.warning(
+                "Please fetch location data of both source and destination before planning your itinerary."
+            )
         else:
             st.sidebar.header("Itinerary Configuration")
 
@@ -337,7 +501,7 @@ if st.session_state.places_df is not None:
                             train=train,
                         )
 
-                        # Add distance calculation
+                        # Add distance calculation for destination places
                         sorted_places["Distance"] = sorted_places.apply(
                             lambda row: (
                                 (row["Latitude"] - st.session_state.lat) ** 2
@@ -352,8 +516,52 @@ if st.session_state.places_df is not None:
                         )  # Approx conversion to km
                         sorted_places = sorted_places.sort_values("Distance_km")
 
-                        # Select place to stay
+                        # Add distance calculation for source places
+                        sorted_places_source["Distance"] = sorted_places_source.apply(
+                            lambda row: (
+                                (row["Latitude"] - st.session_state.lat_source) ** 2
+                                + (row["Longitude"] - st.session_state.lon_source) ** 2
+                            )
+                            ** 0.5,
+                            axis=1,
+                        )
+
+                        sorted_places_source["Distance_km"] = (
+                            sorted_places_source["Distance"] * 111
+                        )  # Approx conversion to km
+                        sorted_places_source = sorted_places_source.sort_values(
+                            "Distance_km", ascending=False
+                        )
+
+                        # Show details of source and destination and select place to stay
                         try:
+                            # Travel from source to destination
+                            st.write("#### Travel from Source to Destination")
+                            st.write(f"🚆 **From:** {source}")
+                            st.write(f"🚆 **To:** {destination}")
+
+                            # total distance calculation as distance from source to destination based on lat/lon
+                            total_distance_source_destination = (
+                                (st.session_state.lat - st.session_state.lat_source)
+                                ** 2
+                                + (st.session_state.lon - st.session_state.lon_source)
+                                ** 2
+                            ) ** 0.5
+                            total_distance__source_destination_km = (
+                                total_distance_source_destination * 111
+                            )  # Approx conversion to km
+                            st.write(
+                                f"🛤️ Total Distance from source to destination: {total_distance__source_destination_km:.2f} km"
+                            )
+                            st.write(
+                                f"⏳ Travel Time: {calculate_travel_time(total_distance__source_destination_km)} minutes"
+                            )
+                            st.write(
+                                f"🚶 Recommended Mode: {determine_transport_mode(total_distance__source_destination_km)}"
+                            )
+
+                            st.markdown("---")
+
                             stay_place = sorted_places[
                                 sorted_places["Category"].str.contains(
                                     "hotel|guest_house|hostel|apartment|motel|resort|stay",
@@ -386,8 +594,13 @@ if st.session_state.places_df is not None:
                     places_per_day = min(
                         5, max(1, len(sorted_places) // days)
                     )  # 5 places/day max
-
                     visited_indices = set()  # Track visited places
+
+                    # max 3 places in source total (not per day)
+                    places_source = min(
+                        3, max(1, len(sorted_places_source) // 3)
+                    )  # 3 places max
+                    visited_indices_source = set()  # Track visited places in source
 
                     for day in range(1, days + 1):
                         st.write(
