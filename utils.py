@@ -76,7 +76,7 @@ def determine_transport_mode(distance_km):
     elif distance_km < 10:
         return "Taxi or Public Transport"
     elif distance_km < 30:
-        return "Public Transport or Intercity Travel"
+        return "Public Transport or Intracity Travel Bus/Train"
     elif distance_km < 100:
         return "Intercity Bus/Train"
     elif distance_km < 200:
