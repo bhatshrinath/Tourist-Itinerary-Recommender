@@ -602,7 +602,94 @@ if (
                     )  # 3 places max
                     visited_indices_source = set()  # Track visited places in source
 
+                    # Filter out places already visited
+                    available_places_source = sorted_places_source[
+                        ~sorted_places_source.index.isin(visited_indices_source)
+                    ]
+
+                    # Select attractions for the day
+                    attractions_source = available_places_source[
+                        (
+                            available_places_source["Category"].str.contains(
+                                "beach|attraction|library|art|aquarium|theatre|events_venue|museum|park|golf_course|theme_park|nature_reserve|garden|escape_game|amusement_arcade|place_of_worship|monastery|handicraft|artwork|pottery|antiques|grassland|dog_park|horse_riding",
+                                case=False,
+                                na=False,
+                            )
+                        )
+                        & (
+                            ~available_places_source["Category"].str.contains(
+                                "apartment", case=False, na=False
+                            )
+                        )
+                    ].head(places_source)
+
+                    if attractions_source.empty:
+                        st.write(
+                            "⚠️ Not enough attractions on the way from source to destination."
+                        )
+
+                    # Select POIs from soruce
+                    source_places = available_places_source[
+                        ~available_places_source.index.isin(visited_indices_source)
+                        & (
+                            available_places_source["Category"].str.contains(
+                                "beach|attraction|library|art|aquarium|theatre|events_venue|museum|park|golf_course|theme_park|nature_reserve|garden|escape_game|amusement_arcade|place_of_worship|monastery|handicraft|artwork|pottery|antiques|grassland|dog_park|horse_riding",
+                                case=False,
+                                na=False,
+                            )
+                        )
+                        & (
+                            ~available_places_source["Category"].str.contains(
+                                "apartment", case=False, na=False
+                            )
+                        )
+                    ].head(
+                        3
+                    )  # 3 extra places max
+                    if not source_places.empty:
+                        st.markdown(
+                            "##### 📌 Places of Interest You Can Visit on the Way from Source to Destination"
+                        )
+
+                        source_idx_dict = {}
+                        for i, (idx, source_place) in enumerate(
+                            source_places.iterrows()
+                        ):
+                            source_idx_dict[i] = idx
+                            if i == 0:
+                                st.write(f"🚆 **From:** {source}")
+                                st.write(
+                                    f"🗺️ **To:** {source_place['Name']} ({source_place['Category'].replace('_', ' ').title()})"
+                                )
+                                st.write(
+                                    f"📍 Location: {round(source_place['Latitude'], 3)}, {round(source_place['Longitude'], 3)}"
+                                )
+                                st.write(
+                                    f"🛤️ Distance: {round(source_place['Distance_km'], 2)} km"
+                                )
+                                st.markdown("---")
+                            elif i > 0:
+                                try:
+                                    st.write(
+                                        f"🗺️ **From:** {source_places.loc[source_idx_dict[i-1]]['Name']} ({source_places.loc[source_idx_dict[i-1]]['Category'].replace('_', ' ').title()})"
+                                    )
+                                except:
+                                    st.write(f"🚆 **From:** {source}")
+                                st.write(
+                                    f"🗺️ **To:** {source_place['Name']} ({source_place['Category'].replace('_', ' ').title()})"
+                                )
+                                st.write(
+                                    f"📍 Location: {round(source_place['Latitude'], 3)}, {round(source_place['Longitude'], 3)}"
+                                )
+                                st.write(
+                                    f"🛤️ Distance: {round(source_place['Distance_km'], 2)} km"
+                                )
+                                st.markdown("---")
+
+                        visited_indices_source.update(source_places.index)
+
                     for day in range(1, days + 1):
+                        st.write(f"### Places to Visit at the Destination")
                         st.write(
                             f"#### Day {day}: {trip_start + timedelta(days=day - 1)}"
                         )
@@ -629,7 +716,9 @@ if (
                         ].head(places_per_day)
 
                         if attractions.empty:
-                            st.write("⚠️ Not enough attractions for this day.")
+                            st.write(
+                                "⚠️ Not enough attractions for this day at the destination."
+                            )
                             break
 
                         # Add the selected attractions to the visited set
@@ -719,7 +808,7 @@ if (
                         )  # 3 extra places max
                         if not extra_places.empty:
                             st.markdown(
-                                "##### 📌 Additional Places of Interest You Can Visit on the Way"
+                                "##### 📌 Additional Places of Interest You Can Visit on the Way at the Destination for each Day of Itinerary"
                             )
 
                             extra_idx_dict = {}
