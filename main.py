@@ -562,30 +562,10 @@ if (
 
                             st.markdown("---")
 
-                            stay_place = sorted_places[
-                                sorted_places["Category"].str.contains(
-                                    "hotel|guest_house|hostel|apartment|motel|resort|stay",
-                                    case=False,
-                                    na=False,
-                                )
-                            ].iloc[0]
-
-                            # Display stay details
-                            st.write(
-                                f"🏨 **Stay**: {stay_place['Name']} ({stay_place['Category'].replace('_', ' ').title()})"
-                            )
-                            st.write(
-                                f"📍 Location: {round(stay_place['Latitude'], 3)}, {round(stay_place['Longitude'], 3)}"
-                            )
-                            st.write(f"📆 Number Of Days: {days}")
-                            st.write(
-                                f"💵 Cost Per Day: ₹{round(budget*(fetch_trip_advisor_cost()/(days*100)),0)}"
-                            )
-                            st.markdown("---")
                         except:
                             # Display a warning or handle gracefully
                             st.warning(
-                                "No suitable stay places found for the given filters."
+                                "No suitable source and destination points of interest found for the given filters."
                             )
                             pass
 
@@ -723,6 +703,32 @@ if (
 
                         # Add the selected attractions to the visited set
                         visited_indices.update(attractions.index)
+
+                        try:
+                            stay_place = sorted_places[
+                                sorted_places["Category"].str.contains(
+                                    "hotel|guest_house|hostel|apartment|motel|resort|stay",
+                                    case=False,
+                                    na=False,
+                                )
+                            ].iloc[0]
+
+                            # Display stay details
+                            st.write(
+                                f"🏨 **Stay**: {stay_place['Name']} ({stay_place['Category'].replace('_', ' ').title()})"
+                            )
+                            st.write(
+                                f"📍 Location: {round(stay_place['Latitude'], 3)}, {round(stay_place['Longitude'], 3)}"
+                            )
+                            st.write(f"📆 Number Of Days: {days}")
+                            st.write(
+                                f"💵 Cost Per Day: ₹{round(budget*(fetch_trip_advisor_cost()/(days*100)),0)}"
+                            )
+                            st.markdown("---")
+                        except:
+                            st.warning(
+                                "No suitable stay places found for the given filters."
+                            )
 
                         # Display places for the day
                         idx_dict = {}
